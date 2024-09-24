@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  backend:
+    build: ./backend
+    ports:
+      - '5000:5000'
+    environment:
+      - SUPABASE_URL=https://pvohcqzdzmzvzidyvjss.supabase.co
+      - SUPABASE_KEY=e2N0s6SmPOp2HLXFEcEq8E5YJiuHviPtOCKI/16ZP3FH7X0Jkb/A+Hu1TE2tav6c99YJBQ0fZYZpBB7VghHEsA==
+      - BUCKET_NAME=generate
+  frontend:
+    build: ./frontend
+    ports:
+      - '3000:3000'
+    depends_on:
+      - backend
