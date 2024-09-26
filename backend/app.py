@@ -19,55 +19,42 @@ def upload_signature():
     data = request.get_json()
 
     name = data.get('name')
-    signature_data = data.get('signature')
+    age = data.get('age')
+    cause_of_death = data.get('causeOfDeath')
 
-    if not name or not signature_data:
-        return jsonify({'error': 'Nome ou assinatura não fornecidos.'}), 400
+    if not name or not age or not cause_of_death:
+        return jsonify({'error': 'Nome ou idade ou causa da morte não fornecidos.'}), 400
 
-    signature_bytes = base64.b64decode(signature_data.split(',')[1])
-    signature_image = Image.open(io.BytesIO(signature_bytes)).convert("RGBA")
-
-    # Remover o fundo branco da assinatura
-    datas = signature_image.getdata()
-    new_data = []
-    for item in datas:
-        # Mudança do branco (ou quase branco) para transparente
-        if item[0] > 200 and item[1] > 200 and item[2] > 200:
-            new_data.append((255, 255, 255, 0))  # Troca para transparente
-        else:
-            new_data.append(item)
-
-    signature_image.putdata(new_data)
-
-    # Primeiro upload: Upload da assinatura do usuário
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    signature_file_name = f'{name}_signature_{timestamp}.png'
-    signature_upload_path = f'person-signature/{signature_file_name}'
-    response = supabase.storage.from_('generate').upload(signature_upload_path, signature_bytes)
 
-    # Construir o URL da assinatura
-    signature_url = f'{STORAGE_BASE_URL}{signature_upload_path}'
+    font_path = './fanta.otf' 
+    template_image = Image.open(f'./assets/{cause_of_death}.png')
 
-    # Criar uma nova imagem com fundo rosa
-    width, height = signature_image.size
-    new_height = height + 50  # Espaço para o nome
+    font_size = 85
+    font = ImageFont.truetype(font_path, font_size)
+    draw = ImageDraw.Draw(template_image)
 
-    combined_image = Image.new('RGBA', (width, new_height), 'pink')
-    combined_image.paste(signature_image, (0, 0), signature_image)
-
-    # Adicionar o nome abaixo da assinatura
-    draw = ImageDraw.Draw(combined_image)
-    font = ImageFont.load_default()
-    text_bbox = draw.textbbox((0, 0), name, font=font)
-    text_width = text_bbox[2] - text_bbox[0]
-    text_height = text_bbox[3] - text_bbox[1]
+    left_section_width = template_image.width / 2
     
-    text_position = ((width - text_width) / 2, height + 10)
-    draw.text(text_position, name, fill='black', font=font)
+    # Posicionar e desenhar o nome
+    text_bbox_name = draw.textbbox((0, 0), name, font=font)
+    text_width_name = text_bbox_name[2] - text_bbox_name[0]
+    text_x_name = (template_image.width - text_width_name) / 2
+    text_y_name = 450  # posição vertical do nome
+
+    draw.text((text_x_name, text_y_name), name, font=font, fill='white')
+
+    # Posicionar e desenhar a idade
+    text_bbox_age = draw.textbbox((0, 0), age, font=font)
+    text_width_age = text_bbox_age[2] - text_bbox_age[0]
+    text_x_age = (left_section_width - text_width_age) / 2 + 109
+    text_y_age = text_y_name + 140  # ajustar abaixo do nome
+
+    draw.text((text_x_age, text_y_age), age, font=font, fill='white')
 
     # Salvar a imagem combinada em bytes
     img_byte_arr = io.BytesIO()
-    combined_image.save(img_byte_arr, format='PNG')
+    template_image.save(img_byte_arr, format='PNG')
     img_byte_arr = img_byte_arr.getvalue()
 
     # Segundo upload: Upload da nova imagem combinada
@@ -80,7 +67,6 @@ def upload_signature():
 
     return jsonify({
         'message': 'Assinatura e imagem combinada enviadas com sucesso!',
-        'signature_url': signature_url,
         'combined_image_url': combined_image_url
     })
 
